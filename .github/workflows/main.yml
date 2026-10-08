@@ -1,0 +1,49 @@
+name: Build KSU Module
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解压用户上传的源码包
+        run: |
+          unzip RotationGuard-source.zip -d src
+          ls -R src
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 安装 SDK 组件并接受许可
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: 编译 APK
+        run: |
+          cd src
+          gradle wrapper --gradle-version 8.7
+          ./gradlew :app:assembleDebug
+
+      - name: 打包 KSU 模块
+        run: |
+          mkdir -p out/system/app/RotationGuard
+          cp src/app/build/outputs/apk/debug/app-debug.apk out/system/app/RotationGuard/RotationGuard.apk
+          cp -r src/module/. out/
+          cd out && zip -r9 ../RotationGuard-ksu.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RotationGuard-ksu
+          path: RotationGuard-ksu.zip
+          retention-days: 30
