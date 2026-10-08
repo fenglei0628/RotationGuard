@@ -10,10 +10,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 查看仓库文件（调试用）
+        run: |
+          echo "===== 仓库根目录内容 ====="
+          ls -la
+
       - name: 解压用户上传的源码包
         run: |
-          unzip RotationGuard-source.zip -d src
-          ls -R src
+          ZIP=$(ls *.zip 2>/dev/null | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: 仓库根目录没有找到任何 .zip 文件"
+            exit 1
+          fi
+          echo "找到压缩包: $ZIP"
+          unzip -o "$ZIP" -d _x
+          ROOT=$(dirname "$(find _x -maxdepth 3 -name settings.gradle | head -n 1)")
+          if [ -z "$ROOT" ] || [ "$ROOT" = "." ]; then
+            echo "ERROR: 压缩包里没有找到 Android 工程（缺 settings.gradle）"
+            find _x
+            exit 1
+          fi
+          echo "工程根目录: $ROOT"
+          mv "$ROOT" src
+          ls src
 
       - uses: actions/setup-java@v4
         with:
